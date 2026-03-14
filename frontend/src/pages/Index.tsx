@@ -11,6 +11,7 @@ import LockerAllocated from "@/components/store/LockerAllocated";
 import PickupAuth from "@/components/pickup/PickupAuth";
 import PickupDetails from "@/components/pickup/PickupDetails";
 import UnlockLocker from "@/components/pickup/UnlockLocker";
+import { MessageCircle, Bot } from 'lucide-react';
 
 const PRICES: Record<string, number[]> = {
   Small: [20, 50, 80, 120],
@@ -239,21 +240,34 @@ const Index = () => {
       {/* Chatbot */}
       <div className="fixed bottom-4 right-4 z-50">
         {chatOpen && (
-          <div className="mb-2 bg-white border border-gray-300 rounded-lg shadow-lg w-80 h-96 flex flex-col">
-            <div className="bg-purple-600 text-white p-3 rounded-t-lg font-semibold">
-              Cloakbe AI Assistant
+          <div className="mb-2 bg-slate-50 border border-gray-300 rounded-2xl shadow-2xl w-80 h-96 flex flex-col">
+            <div className="bg-purple-800 text-white p-3 rounded-t-2xl font-semibold">
+              <div className="flex items-center">
+                <div className="w-6 h-6 bg-purple-700 text-white rounded-full flex items-center justify-center mr-2">
+                  <Bot size={16} />
+                </div>
+                <span>Cloakbe AI</span>
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
-              {chatMessages.map((msg, idx) => (
+              {chatMessages.map((msg: {type: 'user' | 'ai', text: string}, idx: number) => (
                 <div key={idx} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-xs px-3 py-2 rounded-lg ${msg.type === 'user' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-800'}`}>
+                  {msg.type === 'ai' && (
+                    <div className="w-8 h-8 bg-purple-700 text-white rounded-full flex items-center justify-center mr-2">
+                      <Bot size={20} />
+                    </div>
+                  )}
+                  <div className={`max-w-xs px-3 py-2 rounded-2xl ${msg.type === 'user' ? 'bg-purple-700 text-white' : 'bg-gray-200 text-gray-800'}`}>
                     {msg.text}
                   </div>
                 </div>
               ))}
               {chatLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-gray-200 text-gray-800 px-3 py-2 rounded-lg">
+                  <div className="w-8 h-8 bg-purple-700 text-white rounded-full flex items-center justify-center mr-2">
+                    <Bot size={20} />
+                  </div>
+                  <div className="bg-gray-200 text-gray-800 px-3 py-2 rounded-2xl">
                     Thinking...
                   </div>
                 </div>
@@ -266,12 +280,12 @@ const Index = () => {
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                 placeholder="Ask me anything..."
-                className="flex-1 border border-gray-300 rounded-l px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-600"
+                className="flex-1 border border-gray-300 rounded-l-2xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-600"
               />
               <button
                 onClick={handleSendMessage}
                 disabled={chatLoading}
-                className="bg-purple-600 text-white px-4 py-2 rounded-r hover:bg-purple-700 disabled:opacity-50"
+                className="bg-purple-700 text-white px-4 py-2 rounded-r-2xl hover:bg-purple-800 disabled:opacity-50"
               >
                 Send
               </button>
@@ -280,9 +294,9 @@ const Index = () => {
         )}
         <button
           onClick={() => setChatOpen(!chatOpen)}
-          className="bg-purple-600 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:bg-purple-700"
+          className="bg-purple-700 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:bg-purple-800"
         >
-          💬
+          <MessageCircle size={24} />
         </button>
       </div>
     </div>
