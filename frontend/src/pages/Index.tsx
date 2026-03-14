@@ -41,6 +41,9 @@ const Index = () => {
   const [hours, setHours] = useState<number | null>(null);
   const [loading, setLoading] = useState(false); // NEW: Track loading state
   const [accessCode, setAccessCode] = useState<string | null>(null);
+  const [orderId, setOrderId] = useState<number | null>(null);
+  const [pickupAmount, setPickupAmount] = useState<number>(0);
+  const [pickupLockerId, setPickupLockerId] = useState<string>("");
 
   const getDerivedSize = (boxId: string | null): "Small" | "Medium" | "Large" | null => {
     if (!boxId) return null;
@@ -64,6 +67,9 @@ const Index = () => {
     setSelectedLocker(null);
     setHours(null);
     setAccessCode(null);
+    setOrderId(null);
+    setPickupAmount(0);
+    setPickupLockerId("");
   };
 
   // NEW: The function that actually talks to your FastAPI backend
@@ -87,6 +93,46 @@ const Index = () => {
     } catch (error) {
       console.error(error);
       alert("Cannot connect to server. Is the backend running on port 8000?");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBooking = async () => {
+    if (!selectedLocker || !hours) return;
+    
+    setLoading(true);
+    try {
+      // Get box_id from identifier
+      let boxId = 1;
+      const layoutRes = await fetch("http://localhost:8000/terminals/1/layout");
+      if (layoutRes.ok) {
+        const layoutData = await layoutRes.json();
+        const match = layoutData.boxes.find((b: any) => b.identifier === selectedLocker);
+        if (match) boxId = match.id;
+      }
+
+      const res = await fetch("http://localhost:8000/orders/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: 1, // Mock user
+          terminal_id: 1,
+          box_id: boxId,
+          duration_hours: hours
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || "Booking failed");
+      }
+
+      const orderData = await res.json();
+      setAccessCode(orderData.pickup_code);
+      setScreen("store-allocated");
+    } catch (err: any) {
+      alert(err.message || "Booking failed");
     } finally {
       setLoading(false);
     }
@@ -127,22 +173,7 @@ const Index = () => {
               selectedHours={hours}
               onSelect={setHours}
               onBack={() => setScreen("store-locker")}
-              onContinue={() => setScreen("store-payment")}
-            />
-          )}
-          {screen === "store-payment" && (
-            <Payment 
-              amount={getPrice()} 
-              boxIdentifier={selectedLocker}
-              hours={hours}
-              phone={phone}
-              onSuccess={(code) => { setAccessCode(code); setScreen("store-allocated"); }} 
-              onBack={() => setScreen("store-time")} 
-              onConflict={() => {
-                alert("The selected box was just booked by someone else! Please choose another one.");
-                setSelectedLocker(null);
-                setScreen("store-locker");
-              }}
+              onContinue={handleBooking}
             />
           )}
           {screen === "store-allocated" && (
@@ -152,30 +183,27 @@ const Index = () => {
           {/* PICKUP FLOW */}
           {screen === "pickup-auth" && (
             <PickupAuth
-              onOtpLogin={(p) => { setPhone(p); setScreen("pickup-otp"); }}
-              onPasswordLogin={() => setScreen("pickup-details")}
+              onPickup={(id, amount, lockerId) => {
+                setOrderId(id);
+                setPickupAmount(amount);
+                setPickupLockerId(lockerId);
+                setScreen("pickup-payment");
+              }}
               onBack={reset}
             />
           )}
-          {screen === "pickup-otp" && (
-            <OtpVerify phone={phone} onVerify={() => setScreen("pickup-details")} onBack={() => setScreen("pickup-auth")} step={1} totalSteps={4} />
-          )}
-          {screen === "pickup-details" && (
-            <PickupDetails
-              lockerId={activeLockerId}
-              remainingTime="1h 23m"
-              location="Block B, Floor 1"
-              hasExtraCharge={true}
-              extraAmount={getPrice()}
-              onProceed={() => setScreen("pickup-payment")}
-              onBack={() => setScreen("pickup-auth")}
+          {screen === "pickup-payment" && (
+            <Payment 
+              amount={pickupAmount} 
+              orderId={orderId}
+              onSuccess={() => setScreen("pickup-unlock")} 
+              onBack={() => setScreen("pickup-auth")} 
+              step={2} 
+              totalSteps={3} 
             />
           )}
-          {screen === "pickup-payment" && (
-            <Payment amount={getPrice()} onSuccess={() => setScreen("pickup-unlock")} onBack={() => setScreen("pickup-details")} step={3} totalSteps={4} />
-          )}
           {screen === "pickup-unlock" && (
-            <UnlockLocker lockerId={activeLockerId} onDone={reset} />
+            <UnlockLocker lockerId={pickupLockerId} onDone={reset} />
           )}
         </div>
       </main>

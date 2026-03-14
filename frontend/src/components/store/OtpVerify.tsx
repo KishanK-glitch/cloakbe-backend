@@ -3,7 +3,7 @@ import StepWrapper from "../StepWrapper";
 
 interface OtpVerifyProps {
   phone: string;
-  onVerify: () => void;
+  onVerify: (otp: string) => void;
   onBack: () => void;
   step?: number;
   totalSteps?: number;
@@ -56,7 +56,7 @@ const OtpVerify = ({ phone, onVerify, onBack, step = 2, totalSteps = 7 }: OtpVer
 
       if (response.ok) {
         // Success! OTP is correct and not expired
-        onVerify();
+        onVerify(fullOtp);
       } else {
         alert(data.detail || "Invalid or expired OTP. Please try again.");
         setOtp(Array(6).fill("")); // Reset inputs

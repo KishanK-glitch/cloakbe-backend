@@ -39,7 +39,8 @@ def allocate_box(db: Session, user_id: int, terminal_id: int, box_id: int, durat
 
         box.status = BoxStatus.BOOKED.value
 
-        price = pricing_service.calculate_initial_price(box.box_type, duration_hours)
+        # Set initial price to 0, will be calculated at pickup
+        price = 0
 
         pickup_code = generate_pickup_code()
         
@@ -54,7 +55,7 @@ def allocate_box(db: Session, user_id: int, terminal_id: int, box_id: int, durat
             end_time=end_time,
             pickup_code=pickup_code,
             price=price,
-            status=OrderStatus.RESERVED.value
+            status=OrderStatus.ACTIVE.value
         )
         
         db.add(order)

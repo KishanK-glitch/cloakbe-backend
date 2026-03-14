@@ -11,15 +11,16 @@ interface PaymentProps {
   totalSteps?: number;
   boxIdentifier?: string | null;
   hours?: number | null;
-  phone?: string;
-}
+  phone?: string;  orderId?: number | null;}
 
-const Payment = ({ amount, onSuccess, onBack, onConflict, step = 6, totalSteps = 7, boxIdentifier, hours, phone }: PaymentProps) => {
+const Payment = ({ amount, onSuccess, onBack, onConflict, step = 6, totalSteps = 7, boxIdentifier, hours, phone, orderId }: PaymentProps) => {
   const [timer, setTimer] = useState(120);
   const [paid, setPaid] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const displayAmount = Math.max(20, Math.ceil(amount));
 
   useEffect(() => {
     if (timer > 0 && !paid) {
@@ -32,45 +33,27 @@ const Payment = ({ amount, onSuccess, onBack, onConflict, step = 6, totalSteps =
     setLoading(true);
     setError(null);
     try {
-      let boxId = 1;
+      if (orderId) {
+        // Complete pickup
+        const res = await fetch(`http://localhost:8000/orders/${orderId}/complete`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({})
+        });
 
-      // Ensure we have correct id for the box since frontend holds identifier 
-      if (boxIdentifier) {
-        const layoutRes = await fetch("http://localhost:8000/terminals/1/layout");
-        if (layoutRes.ok) {
-           const layoutData = await layoutRes.json();
-           const match = layoutData.boxes.find((b: any) => b.identifier === boxIdentifier);
-           if (match) boxId = match.id;
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.detail || "Payment failed");
         }
-      }
 
-      const res = await fetch("http://localhost:8000/orders/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id: 1, // Using mock user_id 1 since auth verification didn't bind a unique user per requirement
-          terminal_id: 1,
-          box_id: boxId,
-          duration_hours: hours || 1
-        })
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.detail || "Booking failed");
-      }
-
-      const orderData = await res.json();
-      console.log("Order Created:", orderData);
-      
-      setPaid(true);
-      setTimeout(() => onSuccess(orderData.pickup_code), 1500);
-    } catch (err: any) {
-      if (err.message === "Box was just taken" && onConflict) {
-        onConflict();
+        setPaid(true);
+        setTimeout(() => onSuccess(), 1500);
       } else {
-        setError(err.message);
+        // This should not happen in new flow
+        throw new Error("No order to complete");
       }
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -97,7 +80,7 @@ const Payment = ({ amount, onSuccess, onBack, onConflict, step = 6, totalSteps =
 
           <div className="flex items-center justify-between px-2">
             <span className="text-sm text-muted-foreground">Amount</span>
-            <span className="text-2xl font-bold text-foreground">₹{amount}</span>
+            <span className="text-2xl font-bold text-foreground">₹{displayAmount}</span>
           </div>
 
           <div className="text-center text-sm text-muted-foreground">

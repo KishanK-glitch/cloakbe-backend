@@ -29,3 +29,18 @@ def calculate_overtime_penalty(end_time: datetime.datetime, current_time: dateti
 def get_final_price(initial_price: float, end_time: datetime.datetime) -> float:
     penalty = calculate_overtime_penalty(end_time)
     return initial_price + penalty
+
+def calculate_final_price(box_type: str, start_time: datetime.datetime, end_time: datetime.datetime, current_time: datetime.datetime = None) -> float:
+    if current_time is None:
+        current_time = get_current_time()
+    
+    # Calculate hours used (capped at end_time for base price)
+    actual_end = min(current_time, end_time)
+    hours_used = (actual_end - start_time).total_seconds() / 3600.0
+    
+    base_price = calculate_initial_price(box_type, hours_used)
+    
+    # Add overtime penalty if current_time > end_time
+    penalty = calculate_overtime_penalty(end_time, current_time)
+    
+    return base_price + penalty
