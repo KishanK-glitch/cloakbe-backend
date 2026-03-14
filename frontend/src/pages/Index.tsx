@@ -45,6 +45,12 @@ const Index = () => {
   const [pickupAmount, setPickupAmount] = useState<number>(0);
   const [pickupLockerId, setPickupLockerId] = useState<string>("");
 
+  // Chatbot state
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<{type: 'user' | 'ai', text: string}[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+
   const getDerivedSize = (boxId: string | null): "Small" | "Medium" | "Large" | null => {
     if (!boxId) return null;
     const letter = boxId.split('-')[0];
@@ -70,6 +76,28 @@ const Index = () => {
     setOrderId(null);
     setPickupAmount(0);
     setPickupLockerId("");
+  };
+
+  // Chatbot functions
+  const handleSendMessage = async () => {
+    if (!chatInput.trim()) return;
+    const userMessage = chatInput.trim();
+    setChatMessages(prev => [...prev, {type: 'user', text: userMessage}]);
+    setChatInput('');
+    setChatLoading(true);
+    try {
+      const res = await fetch('http://localhost:8001/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage })
+      });
+      const data = await res.json();
+      setChatMessages(prev => [...prev, {type: 'ai', text: data.response}]);
+    } catch (error) {
+      setChatMessages(prev => [...prev, {type: 'ai', text: 'Sorry, I couldn\'t connect to the server.'}]);
+    } finally {
+      setChatLoading(false);
+    }
   };
 
   // NEW: The function that actually talks to your FastAPI backend
@@ -207,6 +235,56 @@ const Index = () => {
           )}
         </div>
       </main>
+
+      {/* Chatbot */}
+      <div className="fixed bottom-4 right-4 z-50">
+        {chatOpen && (
+          <div className="mb-2 bg-white border border-gray-300 rounded-lg shadow-lg w-80 h-96 flex flex-col">
+            <div className="bg-purple-600 text-white p-3 rounded-t-lg font-semibold">
+              Cloakbe AI Assistant
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              {chatMessages.map((msg, idx) => (
+                <div key={idx} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-xs px-3 py-2 rounded-lg ${msg.type === 'user' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-800'}`}>
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+              {chatLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-gray-200 text-gray-800 px-3 py-2 rounded-lg">
+                    Thinking...
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="p-3 border-t border-gray-300 flex">
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                placeholder="Ask me anything..."
+                className="flex-1 border border-gray-300 rounded-l px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-600"
+              />
+              <button
+                onClick={handleSendMessage}
+                disabled={chatLoading}
+                className="bg-purple-600 text-white px-4 py-2 rounded-r hover:bg-purple-700 disabled:opacity-50"
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        )}
+        <button
+          onClick={() => setChatOpen(!chatOpen)}
+          className="bg-purple-600 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:bg-purple-700"
+        >
+          💬
+        </button>
+      </div>
     </div>
   );
 };

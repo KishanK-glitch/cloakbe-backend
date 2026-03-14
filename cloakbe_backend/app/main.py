@@ -6,6 +6,9 @@ from app.database import models
 import time
 import secrets
 import requests
+from fastapi import HTTPException
+from pydantic import BaseModel
+from app.llm_service import ask_ai
 
 app = FastAPI(title="Cloakbe Smart Locker System")
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,6 +23,18 @@ app.add_middleware(
 )
 # CREATE DATABASE TABLES
 models.Base.metadata.create_all(bind=engine)
+
+class ChatRequest(BaseModel):
+    message: str
+
+@app.post("/api/chat")
+def chat_with_ai(request: ChatRequest):
+    try:
+        response = ask_ai(request.message)
+        return {"response": response}
+    except Exception as e:
+        print(f"LLM Error: {e}")
+        return {"response": "System busy, please try again later."}
 
 @app.get("/")
 def read_root():
